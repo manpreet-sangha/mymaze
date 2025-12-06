@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Creator - Draw Your Own Maze!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tool-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tool-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .tool-btn.active {
+            box-shadow: 0 0 0 3px white, 0 0 0 5px #333;
+        }
+
+        .tool-btn.wall { background: #333; color: white; }
+        .tool-btn.path { background: #ffd700; color: #333; }
+        .tool-btn.start { background: #4CAF50; color: white; }
+        .tool-btn.end { background: #2196F3; color: white; }
+        .tool-btn.eraser { background: #f5f5f5; color: #333; }
+        .tool-btn.stamp { background: #E91E63; color: white; }
+        .tool-btn.clear { background: #f44336; color: white; }
+        .tool-btn.play { background: #9C27B0; color: white; }
+        .tool-btn.save { background: #FF9800; color: white; }
+        .tool-btn.load { background: #00BCD4; color: white; }
+
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: #333;
+        }
+
+        .brush-size input {
+            width: 80px;
+        }
+
+        .color-picker-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: #333;
+        }
+
+        .color-picker-wrap input[type="color"] {
+            width: 40px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .color-presets {
+            display: flex;
+            gap: 5px;
+        }
+
+        .color-preset {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-preset:hover {
+            transform: scale(1.2);
+        }
+
+        .color-preset.active {
+            border-color: #333;
+            box-shadow: 0 0 0 2px white;
+        }
+
+        /* Stamp picker dropdown */
+        .stamp-picker {
+            position: relative;
+        }
+
+        .stamp-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 200;
+            width: 280px;
+            margin-top: 10px;
+        }
+
+        .stamp-dropdown.active {
+            display: block;
+        }
+
+        .stamp-category {
+            margin-bottom: 10px;
+        }
+
+        .stamp-category-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .stamp-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+        }
+
+        .stamp-item {
+            font-size: 24px;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .stamp-item:hover {
+            background: #f0f0f0;
+            transform: scale(1.2);
+        }
+
+        .stamp-item.active {
+            background: #E91E63;
+        }
+
+        /* Animated stamps */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        @keyframes pulse-stamp {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .animated-stamp {
+            display: inline-block;
+            animation-duration: 0.5s;
+            animation-iteration-count: infinite;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        #mazeCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .status-bar {
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .instructions {
+            margin-top: 15px;
+            padding: 15px 25px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: white;
+            max-width: 800px;
+            text-align: center;
+        }
+
+        .instructions h3 {
+            margin-bottom: 8px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .instructions li {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 5px;
+        }
+
+        /* Play mode overlay */
+        .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+        }
+
+        .play-overlay.active {
+            display: flex;
+        }
+
+        .play-message {
+            background: white;
+            padding: 30px 50px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .play-message h2 {
+            margin-bottom: 15px;
+        }
+
+        .play-message.win { color: #4CAF50; }
+        .play-message.lose { color: #f44336; }
+
+        .player-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #00ff00;
+            border: 3px solid #006600;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 50;
+            box-shadow: 0 0 10px rgba(0,255,0,0.5);
+        }
+
+        /* Player trail in play mode */
+        .player-trail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 45;
+        }
+
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Maze Creator</h1>
+    
+    <div class="toolbar">
+        <button class="tool-btn wall active" data-tool="wall">🧱 Wall</button>
+        <button class="tool-btn path" data-tool="path">🟡 Path</button>
+        <button class="tool-btn start" data-tool="start">🟢 Start</button>
+        <button class="tool-btn end" data-tool="end">🔵 End</button>
+        <button class="tool-btn eraser" data-tool="eraser">🧹 Eraser</button>
+        <div class="stamp-picker">
+            <button class="tool-btn stamp" data-tool="stamp" id="stampBtn">🦁 Stamps</button>
+            <div class="stamp-dropdown" id="stampDropdown">
+                <div class="stamp-category">
+                    <div class="stamp-category-title">🦁 Animals</div>
+                    <div class="stamp-grid" id="animalStamps"></div>
+                </div>
+                <div class="stamp-category">
+                    <div class="stamp-category-title">🦖 Dinosaurs</div>
+                    <div class="stamp-grid" id="dinoStamps"></div>
+                </div>
+                <div class="stamp-category">
+                    <div class="stamp-category-title">😀 Emojis</div>
+                    <div class="stamp-grid" id="emojiStamps"></div>
+                </div>
+                <div class="stamp-category">
+                    <div class="stamp-category-title">⭐ Fun</div>
+                    <div class="stamp-grid" id="funStamps"></div>
+                </div>
+            </div>
+        </div>
+        <div class="brush-size">
+            <span>Size:</span>
+            <input type="range" id="brushSize" min="5" max="50" value="20">
+            <span id="brushValue">20</span>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="color-picker-wrap">
+            <span>Color:</span>
+            <input type="color" id="colorPicker" value="#1a1a1a">
+            <div class="color-presets">
+                <div class="color-preset active" style="background: #1a1a1a" data-color="#1a1a1a"></div>
+                <div class="color-preset" style="background: #ff0000" data-color="#ff0000"></div>
+                <div class="color-preset" style="background: #00aa00" data-color="#00aa00"></div>
+                <div class="color-preset" style="background: #0066ff" data-color="#0066ff"></div>
+                <div class="color-preset" style="background: #ff6600" data-color="#ff6600"></div>
+                <div class="color-preset" style="background: #9900ff" data-color="#9900ff"></div>
+                <div class="color-preset" style="background: #ff69b4" data-color="#ff69b4"></div>
+                <div class="color-preset" style="background: #ffd700" data-color="#ffd700"></div>
+            </div>
+        </div>
+        <button class="tool-btn clear" id="clearBtn">🗑️ Clear All</button>
+        <button class="tool-btn play" id="playBtn">🎮 Play Maze</button>
+        <button class="tool-btn save" id="saveBtn">💾 Save</button>
+        <button class="tool-btn load" id="loadBtn">📂 Load</button>
+        <input type="file" id="fileInput" accept=".json">
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="mazeCanvas" width="900" height="600"></canvas>
+        <canvas id="trailCanvas" width="900" height="600" class="player-trail"></canvas>
+        <div class="player-dot" id="player"></div>
+        <div class="play-overlay" id="playOverlay">
+            <div class="play-message" id="playMessage">
+                <h2 id="messageTitle">🎉 You Win!</h2>
+                <p id="messageText">Great job navigating the maze!</p>
+                <button class="tool-btn play" id="exitPlayBtn" style="margin-top: 15px;">Exit Play Mode</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+        Tool: Wall | Click and drag to draw
+    </div>
+
+    <div class="instructions">
+        <h3>How to Use:</h3>
+        <ul>
+            <li>🧱 <b>Wall</b> - Draw maze walls</li>
+            <li>🟡 <b>Path</b> - Draw the solution path</li>
+            <li>🦁 <b>Stamps</b> - Add fun decorations</li>
+            <li>🎨 <b>Colors</b> - Pick any color</li>
+            <li>🎮 <b>Play</b> - Your path is traced as you go!</li>
+        </ul>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const trailCanvas = document.getElementById('trailCanvas');
+        const trailCtx = trailCanvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+        const statusBar = document.getElementById('statusBar');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushValue = document.getElementById('brushValue');
+        const player = document.getElementById('player');
+        const playOverlay = document.getElementById('playOverlay');
+        const playMessage = document.getElementById('playMessage');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+        const colorPicker = document.getElementById('colorPicker');
+        const stampDropdown = document.getElementById('stampDropdown');
+
+        let currentTool = 'wall';
+        let isDrawing = false;
+        let brushSize = 20;
+        let lastX = 0;
+        let lastY = 0;
+        let currentColor = '#1a1a1a';
+        let currentStamp = '🦁';
+
+        // Stamp collections
+        const stamps = {
+            animals: ['🦁', '🐯', '🐻', '🐼', '🦊', '🐰', '🐱', '🐶', '🐸', '🦋', '🐢', '🦄'],
+            dinos: ['🦖', '🦕', '🐉', '🦎', '🐊', '🐍'],
+            emojis: ['😀', '😎', '🥳', '😍', '🤩', '😜', '🤗', '😇', '🥰', '🤪', '😂', '🥺'],
+            fun: ['⭐', '🌟', '💖', '❤️', '🔥', '🌈', '🎈', '🎁', '🏆', '👑', '💎', '🎯']
+        };
+
+        // Animation types for stamps
+        const stampAnimations = ['bounce', 'wiggle', 'pulse-stamp'];
+
+        // Maze data
+        let mazeData = {
+            walls: [],
+            paths: [],
+            stamps: [],     // {x, y, emoji, size, animation}
+            start: null,
+            end: null
+        };
+
+        // Current stroke being drawn
+        let currentStroke = null;
+
+        // Play mode
+        let isPlayMode = false;
+        let playerStarted = false;
+        let playerTrail = [];
+        let lastTrailX = 0;
+        let lastTrailY = 0;
+
+        // Populate stamp grids
+        function populateStamps() {
+            const animalGrid = document.getElementById('animalStamps');
+            const dinoGrid = document.getElementById('dinoStamps');
+            const emojiGrid = document.getElementById('emojiStamps');
+            const funGrid = document.getElementById('funStamps');
+
+            stamps.animals.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                animalGrid.appendChild(div);
+            });
+
+            stamps.dinos.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                dinoGrid.appendChild(div);
+            });
+
+            stamps.emojis.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                emojiGrid.appendChild(div);
+            });
+
+            stamps.fun.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                funGrid.appendChild(div);
+            });
+        }
+
+        function selectStamp(emoji, element) {
+            currentStamp = emoji;
+            document.querySelectorAll('.stamp-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            updateStatus(`Stamp: ${emoji} | Click to place`);
+        }
+
+        // Toggle stamp dropdown
+        document.getElementById('stampBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            stampDropdown.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.stamp-picker')) {
+                stampDropdown.classList.remove('active');
+            }
+        });
+
+        // Color picker
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+        });
+
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', () => {
+                currentColor = preset.dataset.color;
+                colorPicker.value = currentColor;
+                document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+                preset.classList.add('active');
+            });
+        });
+
+        // Initialize canvas with white background
+        function initCanvas() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Clear trail canvas
+        function clearTrail() {
+            trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+            playerTrail = [];
+        }
+
+        // Redraw everything
+        function redrawMaze() {
+            initCanvas();
+
+            // Draw paths first (underneath walls)
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            for (const stroke of mazeData.paths) {
+                if (stroke.points.length < 2) continue;
+                ctx.strokeStyle = stroke.color || '#ffd700';
+                ctx.lineWidth = stroke.size;
+                ctx.beginPath();
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+                ctx.stroke();
+            }
+
+            // Draw walls on top
+            for (const stroke of mazeData.walls) {
+                if (stroke.points.length < 2) continue;
+                ctx.strokeStyle = stroke.color || '#1a1a1a';
+                ctx.lineWidth = stroke.size;
+                ctx.beginPath();
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+                ctx.stroke();
+            }
+
+            // Note: Stamps are rendered as animated overlays only (not on canvas)
+
+            // Draw start point
+            if (mazeData.start) {
+                ctx.fillStyle = '#4CAF50';
+                ctx.strokeStyle = '#2E7D32';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(mazeData.start.x, mazeData.start.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('START', mazeData.start.x, mazeData.start.y);
+            }
+
+            // Draw end point
+            if (mazeData.end) {
+                ctx.fillStyle = '#2196F3';
+                ctx.strokeStyle = '#1565C0';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(mazeData.end.x, mazeData.end.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('END', mazeData.end.x, mazeData.end.y);
+            }
+
+            // Render animated stamp overlays
+            renderAnimatedStamps();
+        }
+
+        // Create animated stamp elements
+        function renderAnimatedStamps() {
+            // Remove old animated stamps
+            document.querySelectorAll('.stamp-overlay').forEach(el => el.remove());
+
+            for (const stamp of mazeData.stamps) {
+                const div = document.createElement('div');
+                div.className = 'stamp-overlay animated-stamp';
+                div.style.position = 'absolute';
+                div.style.left = stamp.x + 'px';
+                div.style.top = stamp.y + 'px';
+                div.style.fontSize = stamp.size + 'px';
+                div.style.transform = 'translate(-50%, -50%)';
+                div.style.pointerEvents = 'none';
+                div.style.zIndex = '10';
+                div.style.animationName = stamp.animation;
+                div.textContent = stamp.emoji;
+                container.appendChild(div);
+            }
+        }
+
+        // Get mouse position relative to canvas
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        // Start drawing
+        function startDraw(e) {
+            if (isPlayMode) return;
+            
+            const pos = getMousePos(e);
+            isDrawing = true;
+            lastX = pos.x;
+            lastY = pos.y;
+
+            if (currentTool === 'start') {
+                mazeData.start = { x: pos.x, y: pos.y };
+                redrawMaze();
+                updateStatus('Start point placed!');
+                isDrawing = false;
+                return;
+            }
+
+            if (currentTool === 'end') {
+                mazeData.end = { x: pos.x, y: pos.y };
+                redrawMaze();
+                updateStatus('End point placed!');
+                isDrawing = false;
+                return;
+            }
+
+            if (currentTool === 'stamp') {
+                const animation = stampAnimations[Math.floor(Math.random() * stampAnimations.length)];
+                mazeData.stamps.push({
+                    x: pos.x,
+                    y: pos.y,
+                    emoji: currentStamp,
+                    size: brushSize + 20,
+                    animation: animation
+                });
+                redrawMaze();
+                updateStatus(`Placed ${currentStamp}!`);
+                isDrawing = false;
+                return;
+            }
+
+            if (currentTool === 'eraser') {
+                eraseAt(pos.x, pos.y);
+                return;
+            }
+
+            // Start a new stroke
+            currentStroke = {
+                points: [{ x: pos.x, y: pos.y }],
+                size: brushSize,
+                color: currentColor
+            };
+        }
+
+        // Continue drawing
+        function draw(e) {
+            if (!isDrawing || isPlayMode) return;
+            
+            const pos = getMousePos(e);
+
+            if (currentTool === 'eraser') {
+                eraseAt(pos.x, pos.y);
+                return;
+            }
+
+            if (currentTool === 'wall' || currentTool === 'path') {
+                // Add point to current stroke
+                currentStroke.points.push({ x: pos.x, y: pos.y });
+
+                // Draw the line segment
+                ctx.strokeStyle = currentStroke.color;
+                ctx.lineWidth = brushSize;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        // Stop drawing
+        function stopDraw() {
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            if (currentStroke && currentStroke.points.length > 1) {
+                if (currentTool === 'wall') {
+                    mazeData.walls.push(currentStroke);
+                } else if (currentTool === 'path') {
+                    mazeData.paths.push(currentStroke);
+                }
+            }
+            currentStroke = null;
+        }
+
+        // Erase at position
+        function eraseAt(x, y) {
+            const eraseRadius = brushSize;
+
+            // Check walls
+            mazeData.walls = mazeData.walls.filter(stroke => {
+                return !stroke.points.some(p => 
+                    Math.hypot(p.x - x, p.y - y) < eraseRadius + stroke.size / 2
+                );
+            });
+
+            // Check paths
+            mazeData.paths = mazeData.paths.filter(stroke => {
+                return !stroke.points.some(p => 
+                    Math.hypot(p.x - x, p.y - y) < eraseRadius + stroke.size / 2
+                );
+            });
+
+            // Check stamps
+            mazeData.stamps = mazeData.stamps.filter(stamp => {
+                return Math.hypot(stamp.x - x, stamp.y - y) >= eraseRadius + stamp.size / 2;
+            });
+
+            // Check start
+            if (mazeData.start && Math.hypot(mazeData.start.x - x, mazeData.start.y - y) < eraseRadius + 25) {
+                mazeData.start = null;
+            }
+
+            // Check end
+            if (mazeData.end && Math.hypot(mazeData.end.x - x, mazeData.end.y - y) < eraseRadius + 25) {
+                mazeData.end = null;
+            }
+
+            redrawMaze();
+        }
+
+        // Update status bar
+        function updateStatus(message) {
+            statusBar.textContent = message;
+        }
+
+        // Tool selection
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+                
+                // Auto-select yellow when Path tool is chosen
+                if (currentTool === 'path') {
+                    currentColor = '#ffd700';
+                    colorPicker.value = currentColor;
+                    document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+                    document.querySelector('.color-preset[data-color="#ffd700"]').classList.add('active');
+                }
+                
+                updateStatus(`Tool: ${currentTool.charAt(0).toUpperCase() + currentTool.slice(1)} | Click and drag to draw`);
+            });
+        });
+
+        // Brush size
+        brushSizeInput.addEventListener('input', () => {
+            brushSize = parseInt(brushSizeInput.value);
+            brushValue.textContent = brushSize;
+        });
+
+        // Clear button
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('Clear the entire maze?')) {
+                mazeData = { walls: [], paths: [], stamps: [], start: null, end: null };
+                redrawMaze();
+                updateStatus('Canvas cleared!');
+            }
+        });
+
+        // Save button
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            const dataStr = JSON.stringify(mazeData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'my-maze.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            updateStatus('Maze saved!');
+        });
+
+        // Load button
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    mazeData = JSON.parse(event.target.result);
+                    redrawMaze();
+                    updateStatus('Maze loaded!');
+                } catch (err) {
+                    alert('Invalid maze file!');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Play mode
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!mazeData.start || !mazeData.end) {
+                alert('Please place both a START and END point before playing!');
+                return;
+            }
+            if (mazeData.paths.length === 0) {
+                alert('Please draw a path (yellow) for the player to follow!');
+                return;
+            }
+
+            isPlayMode = true;
+            playerStarted = false;
+            player.style.display = 'none';
+            playOverlay.classList.remove('active');
+            clearTrail();
+            trailCanvas.style.display = 'block';
+            updateStatus('🎮 PLAY MODE: Move your mouse to the START point to begin!');
+            
+            // Disable tool buttons
+            document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.style.opacity = '0.5');
+        });
+
+        function exitPlayMode() {
+            isPlayMode = false;
+            playerStarted = false;
+            player.style.display = 'none';
+            playOverlay.classList.remove('active');
+            clearTrail();
+            trailCanvas.style.display = 'none';
+            updateStatus('Tool: ' + currentTool.charAt(0).toUpperCase() + currentTool.slice(1) + ' | Click and drag to draw');
+            
+            // Re-enable tool buttons
+            document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.style.opacity = '1');
+        }
+
+        document.getElementById('exitPlayBtn').addEventListener('click', exitPlayMode);
+
+        // Draw player trail
+        function drawTrail(x, y) {
+            if (playerTrail.length === 0) {
+                lastTrailX = x;
+                lastTrailY = y;
+            }
+            
+            playerTrail.push({ x, y });
+
+            // Draw trail line with gradient effect
+            trailCtx.strokeStyle = 'rgba(0, 255, 100, 0.6)';
+            trailCtx.lineWidth = 8;
+            trailCtx.lineCap = 'round';
+            trailCtx.lineJoin = 'round';
+            trailCtx.beginPath();
+            trailCtx.moveTo(lastTrailX, lastTrailY);
+            trailCtx.lineTo(x, y);
+            trailCtx.stroke();
+
+            // Add glow effect
+            trailCtx.strokeStyle = 'rgba(0, 255, 100, 0.3)';
+            trailCtx.lineWidth = 16;
+            trailCtx.beginPath();
+            trailCtx.moveTo(lastTrailX, lastTrailY);
+            trailCtx.lineTo(x, y);
+            trailCtx.stroke();
+
+            // Draw dots at intervals
+            if (playerTrail.length % 10 === 0) {
+                trailCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                trailCtx.beginPath();
+                trailCtx.arc(x, y, 4, 0, Math.PI * 2);
+                trailCtx.fill();
+            }
+
+            lastTrailX = x;
+            lastTrailY = y;
+        }
+
+        // Check if point is on path
+        function isOnPath(x, y) {
+            const tolerance = 15;
+            
+            // Check if near start
+            if (mazeData.start && Math.hypot(x - mazeData.start.x, y - mazeData.start.y) < 30) {
+                return true;
+            }
+            
+            // Check if near end
+            if (mazeData.end && Math.hypot(x - mazeData.end.x, y - mazeData.end.y) < 30) {
+                return true;
+            }
+
+            // Check paths
+            for (const stroke of mazeData.paths) {
+                for (let i = 0; i < stroke.points.length - 1; i++) {
+                    const p1 = stroke.points[i];
+                    const p2 = stroke.points[i + 1];
+                    
+                    // Distance from point to line segment
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const lengthSq = dx * dx + dy * dy;
+                    
+                    if (lengthSq === 0) {
+                        if (Math.hypot(x - p1.x, y - p1.y) < stroke.size / 2 + tolerance) return true;
+                        continue;
+                    }
+                    
+                    let t = ((x - p1.x) * dx + (y - p1.y) * dy) / lengthSq;
+                    t = Math.max(0, Math.min(1, t));
+                    
+                    const nearestX = p1.x + t * dx;
+                    const nearestY = p1.y + t * dy;
+                    const dist = Math.hypot(x - nearestX, y - nearestY);
+                    
+                    if (dist < stroke.size / 2 + tolerance) return true;
+                }
+            }
+            
+            return false;
+        }
+
+        // Check if at start
+        function isAtStart(x, y) {
+            return mazeData.start && Math.hypot(x - mazeData.start.x, y - mazeData.start.y) < 30;
+        }
+
+        // Check if at end
+        function isAtEnd(x, y) {
+            return mazeData.end && Math.hypot(x - mazeData.end.x, y - mazeData.end.y) < 30;
+        }
+
+        // Play mode mouse handling
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isPlayMode) return;
+
+            const pos = getMousePos(e);
+            const rect = container.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            // Update player position
+            player.style.left = (e.clientX - canvasRect.left) + 'px';
+            player.style.top = (e.clientY - canvasRect.top) + 'px';
+
+            if (!playerStarted) {
+                if (isAtStart(pos.x, pos.y)) {
+                    playerStarted = true;
+                    player.style.display = 'block';
+                    lastTrailX = pos.x;
+                    lastTrailY = pos.y;
+                    updateStatus('🎮 Navigate to the END point! Stay on the yellow path! Your trail is being drawn.');
+                }
+                return;
+            }
+
+            // Draw the trail as player moves
+            drawTrail(pos.x, pos.y);
+
+            // Check win
+            if (isAtEnd(pos.x, pos.y)) {
+                messageTitle.textContent = '🎉 You Win! 🎉';
+                messageText.textContent = 'Congratulations! You navigated the maze!';
+                playMessage.className = 'play-message win';
+                playOverlay.classList.add('active');
+                return;
+            }
+
+            // Check if on path
+            if (!isOnPath(pos.x, pos.y)) {
+                messageTitle.textContent = '💥 Off the Path! 💥';
+                messageText.textContent = 'You went off the yellow path. Your trail shows where you went wrong!';
+                playMessage.className = 'play-message lose';
+                playOverlay.classList.add('active');
+            }
+        });
+
+        // Also handle trail canvas mouse move
+        trailCanvas.addEventListener('mousemove', (e) => {
+            if (!isPlayMode) return;
+            // Forward to main canvas handler
+            canvas.dispatchEvent(new MouseEvent('mousemove', {
+                clientX: e.clientX,
+                clientY: e.clientY
+            }));
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (isPlayMode && playerStarted) {
+                messageTitle.textContent = '💥 Left the Maze! 💥';
+                messageText.textContent = 'Stay inside the maze area!';
+                playMessage.className = 'play-message lose';
+                playOverlay.classList.add('active');
+            }
+        });
+
+        // Canvas event listeners
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            startDraw({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            draw({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        canvas.addEventListener('touchend', stopDraw);
+
+        // Initialize
+        populateStamps();
+        initCanvas();
+        trailCanvas.style.display = 'none';
+        updateStatus('Tool: Wall | Click and drag to draw');
+    </script>
+</body>
+</html>

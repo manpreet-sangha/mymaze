@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Game - For My Wonderful Son ★ By Dad ★</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f0f0f0;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .instructions {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .game-container {
+            position: relative;
+            background: #fff;
+            border: 3px solid #333;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        #mazeCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 24px;
+            display: none;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .status.win {
+            background: #4CAF50;
+            color: white;
+            display: block;
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+
+        .status.fail {
+            background: #f44336;
+            color: white;
+            display: block;
+        }
+
+        @keyframes pulse {
+            from { transform: translate(-50%, -50%) scale(1); }
+            to { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        #resetBtn {
+            margin-top: 15px;
+            padding: 12px 30px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+        }
+
+        #resetBtn:hover {
+            background: #45a049;
+        }
+
+        .player {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #00ff00;
+            border: 2px solid #006600;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">Enter through the green START zone and navigate to END!</div>
+    
+    <div class="game-container">
+        <div class="status" id="status"></div>
+        <canvas id="mazeCanvas" width="956" height="680"></canvas>
+        <div class="player" id="player"></div>
+    </div>
+    
+    <button id="resetBtn">🔄 Reset Game</button>
+
+    <script>
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+        const player = document.getElementById('player');
+        const resetBtn = document.getElementById('resetBtn');
+        const container = document.querySelector('.game-container');
+
+        let gameState = 'waiting';
+        let playerStarted = false;
+
+        // The solution path traced from the original maze image
+        // Following the yellow/golden highlighted path from START to END
+        const mazePath = [
+            // START - top left corner, going down
+            {x: 48, y: 28},
+            {x: 48, y: 50},
+            {x: 48, y: 80},
+            {x: 48, y: 110},
+            {x: 50, y: 140},
+            {x: 55, y: 170},
+            {x: 60, y: 200},
+            {x: 58, y: 230},
+            {x: 52, y: 260},
+            {x: 48, y: 290},
+            {x: 52, y: 320},
+            {x: 60, y: 350},
+            {x: 75, y: 380},
+            // Curve right at bottom left
+            {x: 100, y: 400},
+            {x: 130, y: 410},
+            {x: 160, y: 405},
+            {x: 190, y: 390},
+            // Go up on left side
+            {x: 210, y: 360},
+            {x: 225, y: 330},
+            {x: 240, y: 300},
+            // Continue up toward center
+            {x: 260, y: 280},
+            {x: 290, y: 265},
+            {x: 320, y: 255},
+            {x: 350, y: 250},
+            // The big curve upward (the hump of the path)
+            {x: 380, y: 240},
+            {x: 400, y: 220},
+            {x: 415, y: 195},
+            {x: 425, y: 165},
+            {x: 430, y: 135},
+            {x: 440, y: 105},
+            {x: 455, y: 80},
+            {x: 480, y: 60},
+            {x: 510, y: 50},
+            {x: 540, y: 48},
+            // Curl to the right at top
+            {x: 570, y: 55},
+            {x: 595, y: 70},
+            {x: 615, y: 95},
+            {x: 625, y: 125},
+            // Curl down (the spiral curl at top right of path)
+            {x: 620, y: 155},
+            {x: 605, y: 180},
+            {x: 585, y: 200},
+            {x: 560, y: 215},
+            // Past the "BEST SON EVER" badge, going down
+            {x: 545, y: 240},
+            {x: 540, y: 270},
+            {x: 545, y: 300},
+            {x: 560, y: 330},
+            // Continue down and right toward basketball
+            {x: 585, y: 360},
+            {x: 615, y: 385},
+            {x: 650, y: 410},
+            {x: 690, y: 440},
+            {x: 730, y: 475},
+            {x: 770, y: 510},
+            {x: 810, y: 545},
+            {x: 850, y: 580},
+            {x: 885, y: 615},
+            // END zone - bottom right
+            {x: 920, y: 645},
+            {x: 940, y: 660}
+        ];
+
+        const pathWidth = 32;
+        const startZone = { x: 10, y: 8, w: 80, h: 55 };
+        const endZone = { x: 880, y: 620, w: 75, h: 58 };
+
+        function drawMaze() {
+            // White paper background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw maze walls (hand-drawn style black lines)
+            drawMazeWalls();
+            
+            // Draw the solution path (yellow/peach colored)
+            drawSolutionPath();
+            
+            // Draw all the decorative elements
+            drawDecorations();
+            
+            // Draw START and END labels
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('START', 12, 22);
+            
+            ctx.textAlign = 'right';
+            ctx.fillText('END', 948, 668);
+            ctx.textAlign = 'left';
+
+            // Highlight start zone
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.25)';
+            ctx.fillRect(startZone.x, startZone.y, startZone.w, startZone.h);
+            
+            // Highlight end zone
+            ctx.fillStyle = 'rgba(0, 150, 255, 0.25)';
+            ctx.fillRect(endZone.x, endZone.y, endZone.w, endZone.h);
+        }
+
+        function drawMazeWalls() {
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Outer border
+            ctx.lineWidth = 4;
+            ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+            ctx.lineWidth = 2;
+
+            // Draw the complex hand-drawn wall pattern
+            // Horizontal curved lines
+            for (let row = 0; row < 19; row++) {
+                const baseY = 30 + row * 34;
+                ctx.beginPath();
+                let x = 8;
+                ctx.moveTo(x, baseY + Math.sin(row) * 5);
+                
+                while (x < canvas.width - 8) {
+                    const segmentLength = 30 + Math.random() * 40;
+                    const curveHeight = (Math.random() - 0.5) * 20;
+                    const cp1x = x + segmentLength * 0.3;
+                    const cp1y = baseY + curveHeight;
+                    const cp2x = x + segmentLength * 0.7;
+                    const cp2y = baseY + curveHeight * 0.5;
+                    const endX = Math.min(x + segmentLength, canvas.width - 8);
+                    const endY = baseY + (Math.random() - 0.5) * 10;
+                    
+                    ctx.quadraticCurveTo(cp1x, cp1y, endX, endY);
+                    x = endX;
+                }
+                ctx.stroke();
+            }
+
+            // Vertical curved lines
+            for (let col = 0; col < 25; col++) {
+                const baseX = 35 + col * 37;
+                ctx.beginPath();
+                let y = 8;
+                ctx.moveTo(baseX + Math.sin(col) * 5, y);
+                
+                while (y < canvas.height - 8) {
+                    const segmentLength = 30 + Math.random() * 40;
+                    const curveWidth = (Math.random() - 0.5) * 20;
+                    const cpY = y + segmentLength * 0.5;
+                    const cpX = baseX + curveWidth;
+                    const endY = Math.min(y + segmentLength, canvas.height - 8);
+                    const endX = baseX + (Math.random() - 0.5) * 10;
+                    
+                    ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+                    y = endY;
+                }
+                ctx.stroke();
+            }
+
+            // Add spiral/swirl patterns (characteristic of the original)
+            const spirals = [
+                {x: 100, y: 140, size: 1}, {x: 280, y: 100, size: 0.8},
+                {x: 180, y: 520, size: 1.1}, {x: 380, y: 480, size: 0.9},
+                {x: 520, y: 550, size: 1}, {x: 680, y: 140, size: 0.85},
+                {x: 750, y: 300, size: 0.9}, {x: 320, y: 380, size: 0.7},
+                {x: 600, y: 480, size: 0.8}, {x: 460, y: 320, size: 0.75}
+            ];
+
+            for (const spiral of spirals) {
+                ctx.beginPath();
+                for (let angle = 0; angle < Math.PI * 5; angle += 0.08) {
+                    const r = (3 + angle * 5) * spiral.size;
+                    const x = spiral.x + Math.cos(angle) * r;
+                    const y = spiral.y + Math.sin(angle) * r;
+                    if (angle === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+        }
+
+        function drawSolutionPath() {
+            // Draw peach/pink shading around path (like colored pencil)
+            ctx.strokeStyle = 'rgba(255, 200, 180, 0.5)';
+            ctx.lineWidth = pathWidth + 20;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(mazePath[0].x, mazePath[0].y);
+            for (let i = 1; i < mazePath.length; i++) {
+                ctx.lineTo(mazePath[i].x, mazePath[i].y);
+            }
+            ctx.stroke();
+
+            // Draw main yellow path
+            ctx.strokeStyle = 'rgba(255, 220, 120, 0.75)';
+            ctx.lineWidth = pathWidth;
+            
+            ctx.beginPath();
+            ctx.moveTo(mazePath[0].x, mazePath[0].y);
+            for (let i = 1; i < mazePath.length; i++) {
+                ctx.lineTo(mazePath[i].x, mazePath[i].y);
+            }
+            ctx.stroke();
+        }
+
+        function drawDecorations() {
+            ctx.textAlign = 'center';
+
+            // ===== SISTER SHARK CIRCLE (left side) =====
+            ctx.beginPath();
+            ctx.arc(125, 290, 58, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffdddd';
+            ctx.fill();
+            ctx.strokeStyle = '#cc3333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Curved text around circle
+            ctx.fillStyle = '#cc0000';
+            ctx.font = 'bold 11px Arial';
+            
+            // "SISTER SHARK" on top arc
+            ctx.save();
+            ctx.translate(125, 290);
+            const topText = "SISTER SHARK";
+            for (let i = 0; i < topText.length; i++) {
+                ctx.save();
+                const angle = -Math.PI/2 + (i - topText.length/2 + 0.5) * 0.19;
+                ctx.rotate(angle);
+                ctx.translate(0, -42);
+                ctx.fillText(topText[i], 0, 0);
+                ctx.restore();
+            }
+            
+            // "Doo Doo Doo" on bottom arc
+            const bottomText = "Doo Doo Doo";
+            for (let i = 0; i < bottomText.length; i++) {
+                ctx.save();
+                const angle = Math.PI/2 + (i - bottomText.length/2 + 0.5) * 0.19;
+                ctx.rotate(angle);
+                ctx.translate(0, -42);
+                ctx.rotate(Math.PI);
+                ctx.fillText(bottomText[i], 0, 0);
+                ctx.restore();
+            }
+            ctx.restore();
+
+            // Shark face
+            ctx.fillStyle = '#aaddff';
+            ctx.beginPath();
+            ctx.ellipse(125, 285, 22, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Shark eyes
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(117, 280, 4, 0, Math.PI * 2);
+            ctx.arc(133, 280, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Shark smile with teeth
+            ctx.beginPath();
+            ctx.arc(125, 292, 12, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+            // Teeth
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#333';
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(113 + i * 6, 292);
+                ctx.lineTo(116 + i * 6, 298);
+                ctx.lineTo(119 + i * 6, 292);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // ===== HEART (left center) =====
+            drawHeart(175, 415, 40, '#e63946');
+
+            // ===== TRUST SHIELD (green) =====
+            ctx.beginPath();
+            ctx.moveTo(370, 310);
+            ctx.lineTo(335, 355);
+            ctx.lineTo(370, 410);
+            ctx.lineTo(405, 355);
+            ctx.closePath();
+            ctx.fillStyle = '#2d6a4f';
+            ctx.fill();
+            ctx.strokeStyle = '#1b4332';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Heart inside shield
+            drawHeart(370, 330, 18, '#e63946');
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('TRUST', 370, 395);
+
+            // ===== BLUE TRIANGLE =====
+            ctx.beginPath();
+            ctx.moveTo(500, 310);
+            ctx.lineTo(480, 350);
+            ctx.lineTo(520, 350);
+            ctx.closePath();
+            ctx.fillStyle = '#1e88e5';
+            ctx.fill();
+
+            // ===== BEST SON EVER BADGE =====
+            ctx.beginPath();
+            ctx.arc(595, 240, 48, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffcccc';
+            ctx.fill();
+            ctx.strokeStyle = '#cc3333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Star with LOVE
+            drawStar(560, 225, 16, 5, 0.5, '#cc0000');
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 7px Arial';
+            ctx.fillText('LOVE', 560, 228);
+            
+            ctx.fillStyle = '#cc0000';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('BEST', 610, 235);
+            ctx.font = 'bold 11px Arial';
+            ctx.fillText('SON', 618, 252);
+            ctx.fillText('EVER', 618, 266);
+
+            // ===== RESPECT BANNER (top right) =====
+            roundRect(ctx, 720, 90, 120, 40, 8);
+            ctx.fillStyle = '#e63946';
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 18px Arial';
+            ctx.fillText('RESPECT', 780, 118);
+
+            // ===== I LOVE YUVRAJ BANNER (right side, vertical) =====
+            ctx.save();
+            ctx.translate(918, 340);
+            ctx.rotate(Math.PI / 2);
+            roundRect(ctx, -90, -20, 180, 40, 8);
+            ctx.fillStyle = '#e63946';
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('I LOVE YUVRAJ', 0, 7);
+            ctx.restore();
+
+            // ===== HOCKEY STICK (left bottom) =====
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(78, 550);
+            ctx.lineTo(78, 460);
+            ctx.quadraticCurveTo(78, 435, 108, 435);
+            ctx.stroke();
+
+            // ===== BLUE BALL =====
+            ctx.beginPath();
+            ctx.arc(88, 390, 14, 0, Math.PI * 2);
+            ctx.fillStyle = '#64b5f6';
+            ctx.fill();
+
+            // ===== PENCIL/THERMOMETER (right) =====
+            ctx.fillStyle = '#e63946';
+            ctx.fillRect(792, 300, 12, 75);
+            // Pencil tip
+            ctx.beginPath();
+            ctx.moveTo(792, 300);
+            ctx.lineTo(798, 280);
+            ctx.lineTo(804, 300);
+            ctx.closePath();
+            ctx.fillStyle = '#ffcc99';
+            ctx.fill();
+            // Bulb at bottom
+            ctx.beginPath();
+            ctx.arc(798, 385, 14, 0, Math.PI * 2);
+            ctx.fillStyle = '#e63946';
+            ctx.fill();
+
+            // ===== BASKETBALL HOOP =====
+            // Pole
+            ctx.strokeStyle = '#cc0000';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(808, 420);
+            ctx.lineTo(808, 495);
+            ctx.stroke();
+            
+            // Backboard
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(778, 420);
+            ctx.lineTo(838, 420);
+            ctx.stroke();
+            
+            // Rim
+            ctx.beginPath();
+            ctx.arc(808, 438, 22, 0, Math.PI);
+            ctx.stroke();
+            
+            // Net
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 7; i++) {
+                ctx.beginPath();
+                ctx.moveTo(788 + i * 6.5, 438);
+                ctx.lineTo(792 + i * 5, 478);
+                ctx.stroke();
+            }
+            
+            // Basketball
+            ctx.beginPath();
+            ctx.arc(808, 390, 22, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff8c00';
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Ball lines
+            ctx.beginPath();
+            ctx.moveTo(786, 390);
+            ctx.lineTo(830, 390);
+            ctx.moveTo(808, 368);
+            ctx.lineTo(808, 412);
+            ctx.stroke();
+
+            // ===== CRICKET BAT =====
+            ctx.fillStyle = '#deb887';
+            ctx.fillRect(575, 490, 22, 75);
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(580, 565, 12, 35);
+
+            // ===== FOOTBALL (American) =====
+            ctx.beginPath();
+            ctx.ellipse(430, 570, 32, 18, 0.35, 0, Math.PI * 2);
+            ctx.fillStyle = '#8b4513';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(415, 560);
+            ctx.lineTo(445, 580);
+            ctx.stroke();
+            // Laces
+            ctx.beginPath();
+            ctx.moveTo(420, 565);
+            ctx.lineTo(440, 575);
+            ctx.stroke();
+
+            // ===== FOOTER TEXT =====
+            ctx.fillStyle = '#cc0000';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('FOR MY WONDERFUL SON ★ BY DAD ★', canvas.width / 2, canvas.height - 8);
+            
+            ctx.textAlign = 'left';
+        }
+
+        function drawHeart(x, y, size, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.beginPath();
+            ctx.moveTo(0, size * 0.35);
+            ctx.bezierCurveTo(-size * 0.5, -size * 0.2, -size * 0.5, size * 0.6, 0, size);
+            ctx.bezierCurveTo(size * 0.5, size * 0.6, size * 0.5, -size * 0.2, 0, size * 0.35);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawStar(cx, cy, outerRadius, points, innerRatio, color) {
+            ctx.beginPath();
+            for (let i = 0; i < points * 2; i++) {
+                const radius = i % 2 === 0 ? outerRadius : outerRadius * innerRatio;
+                const angle = (i * Math.PI) / points - Math.PI / 2;
+                const x = cx + Math.cos(angle) * radius;
+                const y = cy + Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Distance from point to line segment
+        function distanceToSegment(px, py, p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const lengthSq = dx * dx + dy * dy;
+            
+            if (lengthSq === 0) {
+                return Math.sqrt((px - p1.x) ** 2 + (py - p1.y) ** 2);
+            }
+            
+            let t = ((px - p1.x) * dx + (py - p1.y) * dy) / lengthSq;
+            t = Math.max(0, Math.min(1, t));
+            
+            const nearestX = p1.x + t * dx;
+            const nearestY = p1.y + t * dy;
+            
+            return Math.sqrt((px - nearestX) ** 2 + (py - nearestY) ** 2);
+        }
+
+        function distanceToPath(px, py) {
+            let minDist = Infinity;
+            for (let i = 0; i < mazePath.length - 1; i++) {
+                const dist = distanceToSegment(px, py, mazePath[i], mazePath[i + 1]);
+                if (dist < minDist) minDist = dist;
+            }
+            return minDist;
+        }
+
+        function isOnPath(px, py) {
+            return distanceToPath(px, py) <= pathWidth / 2 + 8;
+        }
+
+        function isInStartZone(px, py) {
+            return px >= startZone.x && px <= startZone.x + startZone.w &&
+                   py >= startZone.y && py <= startZone.y + startZone.h;
+        }
+
+        function isInEndZone(px, py) {
+            return px >= endZone.x && px <= endZone.x + endZone.w &&
+                   py >= endZone.y && py <= endZone.y + endZone.h;
+        }
+
+        function resetGame() {
+            gameState = 'waiting';
+            playerStarted = false;
+            status.className = 'status';
+            status.style.display = 'none';
+            player.style.display = 'none';
+            player.style.background = '#00ff00';
+            player.style.borderColor = '#006600';
+            drawMaze();
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Update player visual position
+            const containerRect = container.getBoundingClientRect();
+            player.style.left = (e.clientX - containerRect.left) + 'px';
+            player.style.top = (e.clientY - containerRect.top) + 'px';
+
+            if (gameState === 'won' || gameState === 'lost') return;
+
+            // Start when entering start zone
+            if (!playerStarted && isInStartZone(x, y)) {
+                playerStarted = true;
+                gameState = 'playing';
+                player.style.display = 'block';
+            }
+
+            if (!playerStarted) return;
+
+            // Win when reaching end
+            if (isInEndZone(x, y)) {
+                gameState = 'won';
+                status.textContent = '🎉 YOU WIN! 🎉';
+                status.className = 'status win';
+                return;
+            }
+
+            // Lose if off path
+            if (!isOnPath(x, y) && !isInStartZone(x, y)) {
+                gameState = 'lost';
+                status.textContent = '💥 HIT A WALL! 💥';
+                status.className = 'status fail';
+                player.style.background = '#ff0000';
+                player.style.borderColor = '#990000';
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (gameState === 'playing') {
+                gameState = 'lost';
+                status.textContent = '💥 STAY IN THE MAZE! 💥';
+                status.className = 'status fail';
+            }
+        });
+
+        resetBtn.addEventListener('click', resetGame);
+
+        // Initialize
+        resetGame();
+    </script>
+</body>
+</html>

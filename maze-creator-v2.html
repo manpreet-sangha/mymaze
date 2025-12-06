@@ -1,0 +1,2043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Creator - Draw Your Own Maze!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        h1, h2 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+
+        h2 {
+            margin-top: 30px;
+            font-size: 1.5em;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tool-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tool-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .tool-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .tool-btn.active {
+            box-shadow: 0 0 0 3px white, 0 0 0 5px #333;
+        }
+
+        .tool-btn.wall { background: #333; color: white; }
+        .tool-btn.path { background: #ffd700; color: #333; }
+        .tool-btn.start { background: #4CAF50; color: white; }
+        .tool-btn.end { background: #2196F3; color: white; }
+        .tool-btn.eraser { background: #f5f5f5; color: #333; }
+        .tool-btn.stamp { background: #E91E63; color: white; }
+        .tool-btn.clear { background: #f44336; color: white; }
+        .tool-btn.play { background: #9C27B0; color: white; }
+        .tool-btn.publish { background: #4CAF50; color: white; }
+        .tool-btn.save { background: #FF9800; color: white; }
+        .tool-btn.load { background: #00BCD4; color: white; }
+        .tool-btn.back { background: #607D8B; color: white; }
+
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: #333;
+        }
+
+        .brush-size input {
+            width: 80px;
+        }
+
+        .color-picker-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: #333;
+        }
+
+        .color-picker-wrap input[type="color"] {
+            width: 40px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .color-presets {
+            display: flex;
+            gap: 5px;
+        }
+
+        .color-preset {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-preset:hover {
+            transform: scale(1.2);
+        }
+
+        .color-preset.active {
+            border-color: #333;
+            box-shadow: 0 0 0 2px white;
+        }
+
+        /* Stamp picker dropdown */
+        .stamp-picker {
+            position: relative;
+        }
+
+        .stamp-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 200;
+            width: 280px;
+            margin-top: 10px;
+        }
+
+        .stamp-dropdown.active {
+            display: block;
+        }
+
+        .stamp-category {
+            margin-bottom: 10px;
+        }
+
+        .stamp-category-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .stamp-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+        }
+
+        .stamp-item {
+            font-size: 24px;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .stamp-item:hover {
+            background: #f0f0f0;
+            transform: scale(1.2);
+        }
+
+        .stamp-item.active {
+            background: #E91E63;
+        }
+
+        /* Start/End icon picker popup */
+        .icon-picker-popup {
+            position: absolute;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            z-index: 300;
+            display: none;
+        }
+
+        .icon-picker-popup.active {
+            display: block;
+        }
+
+        .icon-picker-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .icon-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .icon-option {
+            font-size: 28px;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .icon-option:hover {
+            background: #f0f0f0;
+            transform: scale(1.15);
+        }
+
+        .icon-option.active {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        /* Animated stamps */
+        @keyframes bounce {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+            50% { transform: translate(-50%, -50%) translateY(-5px); }
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: translate(-50%, -50%) rotate(-5deg); }
+            50% { transform: translate(-50%, -50%) rotate(5deg); }
+        }
+
+        @keyframes pulse-stamp {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .animated-stamp {
+            display: inline-block;
+            animation-duration: 0.5s;
+            animation-iteration-count: infinite;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        #mazeCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .status-bar {
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .validation-status {
+            margin-top: 10px;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .validation-status.valid {
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            display: block;
+        }
+
+        .validation-status.invalid {
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            display: block;
+        }
+
+        .instructions {
+            margin-top: 15px;
+            padding: 15px 25px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: white;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        .instructions h3 {
+            margin-bottom: 8px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .instructions li {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 5px;
+        }
+
+        /* Play mode overlay */
+        .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+        }
+
+        .play-overlay.active {
+            display: flex;
+        }
+
+        .play-message {
+            background: white;
+            padding: 30px 50px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .play-message h2 {
+            margin-bottom: 15px;
+            color: #333;
+            text-shadow: none;
+        }
+
+        .play-message.win h2 { color: #4CAF50; }
+        .play-message.lose h2 { color: #f44336; }
+
+        .player-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #00ff00;
+            border: 3px solid #006600;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 50;
+            box-shadow: 0 0 10px rgba(0,255,0,0.5);
+        }
+
+        /* Player trail in play mode */
+        .player-trail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 45;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Published Mazes Gallery */
+        .published-section {
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 40px;
+        }
+
+        .maze-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .maze-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .maze-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .maze-card-preview {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            background: #f0f0f0;
+        }
+
+        .maze-card-info {
+            padding: 15px;
+        }
+
+        .maze-card-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .maze-card-date {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .maze-card-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .maze-card-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .maze-card-btn.play-btn {
+            background: #9C27B0;
+            color: white;
+        }
+
+        .maze-card-btn.delete-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .no-mazes {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.7);
+            font-style: italic;
+        }
+
+        /* Play Mode View */
+        .play-mode-container {
+            display: none;
+        }
+
+        .play-mode-container.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .editor-container.hidden {
+            display: none;
+        }
+
+        /* Name input modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .modal h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .modal input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Editor View -->
+    <div class="editor-container" id="editorContainer">
+        <h1>🎨 Maze Creator</h1>
+        
+        <div class="toolbar">
+            <button class="tool-btn wall active" data-tool="wall">🧱 Wall (Required)</button>
+            <button class="tool-btn path" data-tool="path">🟡 Path (Start→End)</button>
+            <button class="tool-btn start" data-tool="start">🟢 Start</button>
+            <button class="tool-btn end" data-tool="end">🔵 End</button>
+            <button class="tool-btn eraser" data-tool="eraser">🧹 Eraser</button>
+            <div class="stamp-picker">
+                <button class="tool-btn stamp" data-tool="stamp" id="stampBtn">🦁 Stamps</button>
+                <div class="stamp-dropdown" id="stampDropdown">
+                    <div class="stamp-category">
+                        <div class="stamp-category-title">✨ Letter Y (for Yuvraj!)</div>
+                        <div class="stamp-grid" id="yLetterStamps"></div>
+                    </div>
+                    <div class="stamp-category">
+                        <div class="stamp-category-title">🦁 Animals</div>
+                        <div class="stamp-grid" id="animalStamps"></div>
+                    </div>
+                    <div class="stamp-category">
+                        <div class="stamp-category-title">🦖 Dinosaurs</div>
+                        <div class="stamp-grid" id="dinoStamps"></div>
+                    </div>
+                    <div class="stamp-category">
+                        <div class="stamp-category-title">😀 Emojis</div>
+                        <div class="stamp-grid" id="emojiStamps"></div>
+                    </div>
+                    <div class="stamp-category">
+                        <div class="stamp-category-title">⭐ Fun</div>
+                        <div class="stamp-grid" id="funStamps"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="brush-size">
+                <span>Size:</span>
+                <input type="range" id="brushSize" min="2" max="10" value="5">
+                <span id="brushValue">5</span>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="color-picker-wrap">
+                <span>Color:</span>
+                <input type="color" id="colorPicker" value="#1a1a1a">
+                <div class="color-presets">
+                    <div class="color-preset active" style="background: #1a1a1a" data-color="#1a1a1a"></div>
+                    <div class="color-preset" style="background: #ff0000" data-color="#ff0000"></div>
+                    <div class="color-preset" style="background: #00aa00" data-color="#00aa00"></div>
+                    <div class="color-preset" style="background: #0066ff" data-color="#0066ff"></div>
+                    <div class="color-preset" style="background: #ff6600" data-color="#ff6600"></div>
+                    <div class="color-preset" style="background: #9900ff" data-color="#9900ff"></div>
+                    <div class="color-preset" style="background: #ff69b4" data-color="#ff69b4"></div>
+                    <div class="color-preset" style="background: #ffd700" data-color="#ffd700"></div>
+                </div>
+            </div>
+            <button class="tool-btn clear" id="clearBtn">🗑️ Clear All</button>
+            <button class="tool-btn publish" id="publishBtn" disabled>📢 Publish Maze</button>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="mazeCanvas" width="900" height="600"></canvas>
+            <div class="player-dot" id="player"></div>
+            <!-- Icon picker popups -->
+            <div class="icon-picker-popup" id="startIconPicker">
+                <div class="icon-picker-title">Choose Start Icon</div>
+                <div class="icon-picker-grid" id="startIconGrid"></div>
+            </div>
+            <div class="icon-picker-popup" id="endIconPicker">
+                <div class="icon-picker-title">Choose End Icon</div>
+                <div class="icon-picker-grid" id="endIconGrid"></div>
+            </div>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+            Tool: Wall | Click and drag to draw walls
+        </div>
+
+        <div class="validation-status" id="validationStatus"></div>
+
+        <div class="instructions">
+            <h3>How to Create a Maze:</h3>
+            <ul>
+                <li>1️⃣ Click <b>Start/End</b> icons to change them</li>
+                <li>2️⃣ Draw <b>Walls</b> to create obstacles</li>
+                <li>3️⃣ Draw a <b>Path</b> connecting Start to End</li>
+                <li>4️⃣ Add <b>Stamps</b> for decoration</li>
+                <li>5️⃣ Click <b>Publish</b> when ready!</li>
+            </ul>
+        </div>
+
+        <!-- Published Mazes Section -->
+        <div class="published-section">
+            <h2>📚 Published Mazes</h2>
+            <div class="maze-gallery" id="mazeGallery">
+                <div class="no-mazes" id="noMazes">No mazes published yet. Create and publish your first maze!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Play Mode View -->
+    <div class="play-mode-container" id="playModeContainer">
+        <h1 id="playMazeTitle">Playing: My Maze</h1>
+        
+        <div class="toolbar">
+            <button class="tool-btn back" id="backToEditorBtn">⬅️ Back to Editor</button>
+            <button class="tool-btn play" id="resetPlayBtn">🔄 Reset</button>
+            <button class="tool-btn" id="undoPlayBtn" style="background: #FF9800; color: white;" disabled>↩️ Undo</button>
+            <button class="tool-btn" id="redoPlayBtn" style="background: #00BCD4; color: white;" disabled>↪️ Redo</button>
+        </div>
+
+        <div class="canvas-container" id="playCanvasContainer">
+            <canvas id="playCanvas" width="900" height="600"></canvas>
+            <canvas id="trailCanvas" width="900" height="600" class="player-trail"></canvas>
+            <div class="player-dot" id="playPlayer"></div>
+            <div class="play-overlay" id="playOverlay">
+                <div class="play-message" id="playMessage">
+                    <h2 id="messageTitle">🎉 You Win!</h2>
+                    <p id="messageText">Great job navigating the maze!</p>
+                    <button class="tool-btn play" id="playAgainBtn" style="margin-top: 15px;">Play Again</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar" id="playStatusBar">
+            Move your mouse to the START point to begin!
+        </div>
+    </div>
+
+    <!-- Publish Modal -->
+    <div class="modal-overlay" id="publishModal">
+        <div class="modal">
+            <h3>🎉 Publish Your Maze</h3>
+            <input type="text" id="mazeName" placeholder="Enter maze name..." maxlength="30">
+            <div class="modal-buttons">
+                <button class="tool-btn clear" id="cancelPublishBtn">Cancel</button>
+                <button class="tool-btn publish" id="confirmPublishBtn">Publish!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CANVAS AND ELEMENTS =====
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+        const statusBar = document.getElementById('statusBar');
+        const validationStatus = document.getElementById('validationStatus');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushValue = document.getElementById('brushValue');
+        const colorPicker = document.getElementById('colorPicker');
+        const stampDropdown = document.getElementById('stampDropdown');
+        const publishBtn = document.getElementById('publishBtn');
+        const publishModal = document.getElementById('publishModal');
+        const mazeGallery = document.getElementById('mazeGallery');
+        const noMazes = document.getElementById('noMazes');
+
+        // Play mode elements
+        const playCanvas = document.getElementById('playCanvas');
+        const playCtx = playCanvas.getContext('2d');
+        const trailCanvas = document.getElementById('trailCanvas');
+        const trailCtx = trailCanvas.getContext('2d');
+        const playContainer = document.getElementById('playCanvasContainer');
+        const playPlayer = document.getElementById('playPlayer');
+        const playOverlay = document.getElementById('playOverlay');
+        const playMessage = document.getElementById('playMessage');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+        const playStatusBar = document.getElementById('playStatusBar');
+        const playMazeTitle = document.getElementById('playMazeTitle');
+
+        // Containers
+        const editorContainer = document.getElementById('editorContainer');
+        const playModeContainer = document.getElementById('playModeContainer');
+
+        // ===== STATE =====
+        let currentTool = 'wall';
+        let isDrawing = false;
+        let brushSize = 5;
+        let lastX = 0;
+        let lastY = 0;
+        let currentColor = '#1a1a1a';
+        let currentStamp = '🦁';
+
+        // Stamp collections
+        const stamps = {
+            yLetters: ['Y', 'ყ', 'Ÿ', 'Ұ', 'Ƴ', 'ℽ'],
+            animals: ['🦁', '🐯', '🐻', '🐼', '🦊', '🐰', '🐱', '🐶', '🐸', '🦋', '🐢', '🦄'],
+            dinos: ['🦖', '🦕', '🐉', '🦎', '🐊', '🐍'],
+            emojis: ['😀', '😎', '🥳', '😍', '🤩', '😜', '🤗', '😇', '🥰', '🤪', '😂', '🥺'],
+            fun: ['⭐', '🌟', '💖', '❤️', '🔥', '🌈', '🎈', '🎁', '🏆', '👑', '💎', '🎯']
+        };
+        
+        // Custom Y styles (drawn on canvas)
+        const yStyles = [
+            { id: 'curly', name: 'Curly Y', color: '#1a1a1a' },
+            { id: 'fancy', name: 'Fancy Y', color: '#9C27B0' },
+            { id: 'bold', name: 'Bold Y', color: '#E91E63' },
+            { id: 'script', name: 'Script Y', color: '#2196F3' },
+            { id: 'bubble', name: 'Bubble Y', color: '#4CAF50' },
+            { id: 'star', name: 'Star Y', color: '#FF9800' }
+        ];
+
+        const stampAnimations = ['bounce', 'wiggle', 'pulse-stamp'];
+
+        // Start/End icon options
+        const startIcons = ['🟢', '🚀', '🏁', '🎬', '▶️', '🌟', '🔰', '🎯'];
+        const endIcons = ['🔵', '🏆', '🎖️', '🏠', '🎁', '⭐', '🥇', '🚩'];
+        
+        let currentStartIcon = '🟢';
+        let currentEndIcon = '🔵';
+
+        // Icon picker elements
+        const startIconPicker = document.getElementById('startIconPicker');
+        const endIconPicker = document.getElementById('endIconPicker');
+        const startIconGrid = document.getElementById('startIconGrid');
+        const endIconGrid = document.getElementById('endIconGrid');
+
+        // Maze data
+        let mazeData = {
+            walls: [],
+            paths: [],
+            stamps: [],
+            start: { x: 60, y: 60, icon: '🟢' },
+            end: { x: 840, y: 540, icon: '🔵' },
+            outerWall: true
+        };
+
+        let currentStroke = null;
+
+        // Published mazes (stored in localStorage)
+        let publishedMazes = JSON.parse(localStorage.getItem('publishedMazes') || '[]');
+
+        // Play mode state
+        let currentPlayMaze = null;
+        let playerStarted = false;
+        let playerTrail = [];
+        let lastTrailX = 0;
+        let lastTrailY = 0;
+        let lastValidX = 0;
+        let lastValidY = 0;
+        let undoStack = []; // For undo - stores trail segments
+        let redoStack = []; // For redo
+        const TRAIL_SEGMENT_SIZE = 20; // Number of points per undo segment
+
+        // ===== INITIALIZATION =====
+        function init() {
+            populateStamps();
+            populateIconPickers();
+            initCanvas();
+            renderGallery();
+            updateValidation();
+        }
+
+        function populateIconPickers() {
+            // Populate start icon grid
+            startIcons.forEach(icon => {
+                const div = document.createElement('div');
+                div.className = 'icon-option' + (icon === currentStartIcon ? ' active' : '');
+                div.textContent = icon;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    selectStartIcon(icon, div);
+                };
+                startIconGrid.appendChild(div);
+            });
+
+            // Populate end icon grid
+            endIcons.forEach(icon => {
+                const div = document.createElement('div');
+                div.className = 'icon-option' + (icon === currentEndIcon ? ' active' : '');
+                div.textContent = icon;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    selectEndIcon(icon, div);
+                };
+                endIconGrid.appendChild(div);
+            });
+        }
+
+        function selectStartIcon(icon, element) {
+            currentStartIcon = icon;
+            if (mazeData.start) {
+                mazeData.start.icon = icon;
+            }
+            startIconGrid.querySelectorAll('.icon-option').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            redrawMaze();
+            startIconPicker.classList.remove('active');
+            updateStatus(`Start icon changed to ${icon}`);
+        }
+
+        function selectEndIcon(icon, element) {
+            currentEndIcon = icon;
+            if (mazeData.end) {
+                mazeData.end.icon = icon;
+            }
+            endIconGrid.querySelectorAll('.icon-option').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            redrawMaze();
+            endIconPicker.classList.remove('active');
+            updateStatus(`End icon changed to ${icon}`);
+        }
+
+        function showIconPicker(type, x, y) {
+            const picker = type === 'start' ? startIconPicker : endIconPicker;
+            const otherPicker = type === 'start' ? endIconPicker : startIconPicker;
+            
+            otherPicker.classList.remove('active');
+            
+            // Position the picker near the click, but ensure it stays within canvas bounds
+            // For end point (usually bottom-right), position picker to the left/above
+            let pickerX = x + 10;
+            let pickerY = y + 10;
+            
+            // If near right edge, position to the left
+            if (x > canvas.width - 200) {
+                pickerX = x - 180;
+            }
+            
+            // If near bottom edge, position above
+            if (y > canvas.height - 250) {
+                pickerY = y - 220;
+            }
+            
+            picker.style.left = Math.max(10, pickerX) + 'px';
+            picker.style.top = Math.max(10, pickerY) + 'px';
+            picker.classList.add('active');
+        }
+
+        function hideIconPickers() {
+            startIconPicker.classList.remove('active');
+            endIconPicker.classList.remove('active');
+        }
+
+        function populateStamps() {
+            const yLetterGrid = document.getElementById('yLetterStamps');
+            const animalGrid = document.getElementById('animalStamps');
+            const dinoGrid = document.getElementById('dinoStamps');
+            const emojiGrid = document.getElementById('emojiStamps');
+            const funGrid = document.getElementById('funStamps');
+
+            // Add custom drawn Y styles
+            yStyles.forEach(style => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item y-style-item';
+                div.style.fontFamily = 'cursive, serif';
+                div.style.fontWeight = 'bold';
+                div.style.color = style.color;
+                div.textContent = 'Y';
+                div.title = style.name;
+                div.dataset.yStyle = style.id;
+                div.onclick = () => selectYStyle(style, div);
+                yLetterGrid.appendChild(div);
+            });
+
+            stamps.animals.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                animalGrid.appendChild(div);
+            });
+
+            stamps.dinos.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                dinoGrid.appendChild(div);
+            });
+
+            stamps.emojis.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                emojiGrid.appendChild(div);
+            });
+
+            stamps.fun.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'stamp-item';
+                div.textContent = s;
+                div.onclick = () => selectStamp(s, div);
+                funGrid.appendChild(div);
+            });
+        }
+
+        let currentYStyle = null;
+
+        function selectYStyle(style, element) {
+            currentYStyle = style;
+            currentStamp = null;
+            document.querySelectorAll('.stamp-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            updateStatus(`Y Style: ${style.name} | Click to place a beautiful Y!`);
+        }
+
+        function selectStamp(emoji, element) {
+            currentStamp = emoji;
+            currentYStyle = null;
+            document.querySelectorAll('.stamp-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            updateStatus(`Stamp: ${emoji} | Click to place`);
+        }
+
+        function initCanvas() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw outer boundary wall
+            drawOuterWall();
+            
+            // Draw initial start and end points
+            redrawMaze();
+        }
+
+        function drawOuterWall() {
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Draw a thick outer border
+            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+        }
+
+        // ===== VALIDATION =====
+        function updateValidation() {
+            const hasWalls = mazeData.walls.length > 0 || mazeData.outerWall;
+            const hasStart = mazeData.start !== null;
+            const hasEnd = mazeData.end !== null;
+            const hasPath = mazeData.paths.length > 0;
+
+            let isValid = hasWalls && hasStart && hasEnd && hasPath;
+            let message = '';
+
+            if (!hasWalls) {
+                message = '❌ Draw some walls first';
+            } else if (!hasStart) {
+                message = '❌ Place a START point';
+            } else if (!hasEnd) {
+                message = '❌ Place an END point';
+            } else if (!hasPath) {
+                message = '❌ Draw a path from START to END';
+            } else {
+                // Check if path connects start to end
+                const pathConnected = checkPathConnection();
+                if (pathConnected) {
+                    message = '✅ Maze is ready to publish!';
+                    isValid = true;
+                } else {
+                    message = '❌ Path must connect START to END';
+                    isValid = false;
+                }
+            }
+
+            validationStatus.textContent = message;
+            validationStatus.className = 'validation-status ' + (isValid ? 'valid' : 'invalid');
+            publishBtn.disabled = !isValid;
+        }
+
+        function checkPathConnection() {
+            if (!mazeData.start || !mazeData.end || mazeData.paths.length === 0) {
+                return false;
+            }
+
+            // Check if any path point is near start and any is near end
+            let nearStart = false;
+            let nearEnd = false;
+            const tolerance = 50;
+
+            for (const stroke of mazeData.paths) {
+                for (const point of stroke.points) {
+                    if (Math.hypot(point.x - mazeData.start.x, point.y - mazeData.start.y) < tolerance) {
+                        nearStart = true;
+                    }
+                    if (Math.hypot(point.x - mazeData.end.x, point.y - mazeData.end.y) < tolerance) {
+                        nearEnd = true;
+                    }
+                }
+            }
+
+            return nearStart && nearEnd;
+        }
+
+        // ===== DRAWING =====
+        function redrawMaze() {
+            // Clear and fill white
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw outer boundary wall
+            drawOuterWall();
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Draw paths first (underneath walls)
+            for (const stroke of mazeData.paths) {
+                if (stroke.points.length < 2) continue;
+                ctx.strokeStyle = stroke.color || '#ffd700';
+                ctx.lineWidth = stroke.size;
+                ctx.beginPath();
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+                ctx.stroke();
+            }
+
+            // Draw walls on top
+            for (const stroke of mazeData.walls) {
+                if (stroke.points.length < 2) continue;
+                ctx.strokeStyle = stroke.color || '#1a1a1a';
+                ctx.lineWidth = stroke.size;
+                ctx.beginPath();
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+                ctx.stroke();
+            }
+
+            // Draw start point with icon
+            if (mazeData.start) {
+                const startIcon = mazeData.start.icon || currentStartIcon;
+                // Only show circle for default icons
+                if (startIcon === '🟢') {
+                    ctx.fillStyle = '#4CAF50';
+                    ctx.strokeStyle = '#2E7D32';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(mazeData.start.x, mazeData.start.y, 28, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                
+                // Draw the icon
+                ctx.font = '36px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(startIcon, mazeData.start.x, mazeData.start.y);
+            }
+
+            // Draw end point with icon
+            if (mazeData.end) {
+                const endIcon = mazeData.end.icon || currentEndIcon;
+                // Only show circle for default icons
+                if (endIcon === '🔵') {
+                    ctx.fillStyle = '#2196F3';
+                    ctx.strokeStyle = '#1565C0';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(mazeData.end.x, mazeData.end.y, 28, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                
+                // Draw the icon
+                ctx.font = '36px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(endIcon, mazeData.end.x, mazeData.end.y);
+            }
+
+            renderAnimatedStamps();
+            updateValidation();
+        }
+
+        // Draw a curly/artistic Y shape on canvas
+        function drawCurlyY(ctx, x, y, size, style, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = size / 20;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            const scale = size / 100;
+            
+            switch(style) {
+                case 'curly':
+                    // Curly Y like in the image - with spiral ends
+                    ctx.beginPath();
+                    // Left arm with curl at top
+                    ctx.moveTo(-35 * scale, -40 * scale);
+                    ctx.quadraticCurveTo(-40 * scale, -50 * scale, -30 * scale, -55 * scale);
+                    ctx.quadraticCurveTo(-20 * scale, -58 * scale, -25 * scale, -45 * scale);
+                    ctx.quadraticCurveTo(-20 * scale, -30 * scale, 0, 0);
+                    ctx.stroke();
+                    
+                    // Right arm with curl
+                    ctx.beginPath();
+                    ctx.moveTo(35 * scale, -40 * scale);
+                    ctx.quadraticCurveTo(45 * scale, -35 * scale, 40 * scale, -25 * scale);
+                    ctx.quadraticCurveTo(35 * scale, -15 * scale, 25 * scale, -10 * scale);
+                    ctx.quadraticCurveTo(10 * scale, 0, 0, 0);
+                    ctx.stroke();
+                    
+                    // Tail with spiral at bottom
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(-5 * scale, 25 * scale, -15 * scale, 45 * scale);
+                    ctx.quadraticCurveTo(-25 * scale, 55 * scale, -20 * scale, 60 * scale);
+                    ctx.quadraticCurveTo(-10 * scale, 65 * scale, -5 * scale, 55 * scale);
+                    ctx.quadraticCurveTo(0, 45 * scale, -10 * scale, 50 * scale);
+                    ctx.stroke();
+                    break;
+                    
+                case 'fancy':
+                    // Fancy scripted Y
+                    ctx.lineWidth = size / 15;
+                    ctx.beginPath();
+                    ctx.moveTo(-30 * scale, -50 * scale);
+                    ctx.bezierCurveTo(-35 * scale, -30 * scale, -10 * scale, -10 * scale, 0, 5 * scale);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(30 * scale, -50 * scale);
+                    ctx.bezierCurveTo(35 * scale, -30 * scale, 10 * scale, -10 * scale, 0, 5 * scale);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, 5 * scale);
+                    ctx.bezierCurveTo(-5 * scale, 30 * scale, -25 * scale, 50 * scale, -15 * scale, 60 * scale);
+                    ctx.bezierCurveTo(-5 * scale, 70 * scale, 5 * scale, 55 * scale, 0, 45 * scale);
+                    ctx.stroke();
+                    break;
+                    
+                case 'bold':
+                    // Bold chunky Y
+                    ctx.lineWidth = size / 8;
+                    ctx.beginPath();
+                    ctx.moveTo(-30 * scale, -50 * scale);
+                    ctx.lineTo(0, 0);
+                    ctx.lineTo(30 * scale, -50 * scale);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0, 55 * scale);
+                    ctx.stroke();
+                    break;
+                    
+                case 'script':
+                    // Elegant script Y
+                    ctx.lineWidth = size / 18;
+                    ctx.beginPath();
+                    ctx.moveTo(-25 * scale, -55 * scale);
+                    ctx.quadraticCurveTo(-30 * scale, -45 * scale, -20 * scale, -35 * scale);
+                    ctx.quadraticCurveTo(0, -10 * scale, 5 * scale, 10 * scale);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(35 * scale, -55 * scale);
+                    ctx.quadraticCurveTo(40 * scale, -40 * scale, 25 * scale, -25 * scale);
+                    ctx.quadraticCurveTo(10 * scale, -10 * scale, 5 * scale, 10 * scale);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(5 * scale, 10 * scale);
+                    ctx.quadraticCurveTo(0, 35 * scale, -20 * scale, 55 * scale);
+                    ctx.quadraticCurveTo(-30 * scale, 65 * scale, -25 * scale, 55 * scale);
+                    ctx.stroke();
+                    break;
+                    
+                case 'bubble':
+                    // Bubble/rounded Y
+                    ctx.lineWidth = size / 10;
+                    ctx.beginPath();
+                    ctx.moveTo(-28 * scale, -50 * scale);
+                    ctx.quadraticCurveTo(-30 * scale, -35 * scale, 0, 0);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(28 * scale, -50 * scale);
+                    ctx.quadraticCurveTo(30 * scale, -35 * scale, 0, 0);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(5 * scale, 30 * scale, 0, 55 * scale);
+                    ctx.stroke();
+                    
+                    // Add bubble dots
+                    ctx.beginPath();
+                    ctx.arc(-28 * scale, -52 * scale, 5 * scale, 0, Math.PI * 2);
+                    ctx.arc(28 * scale, -52 * scale, 5 * scale, 0, Math.PI * 2);
+                    ctx.arc(0, 58 * scale, 5 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                    
+                case 'star':
+                    // Y with stars
+                    ctx.lineWidth = size / 12;
+                    ctx.beginPath();
+                    ctx.moveTo(-25 * scale, -45 * scale);
+                    ctx.lineTo(0, 0);
+                    ctx.lineTo(25 * scale, -45 * scale);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0, 50 * scale);
+                    ctx.stroke();
+                    
+                    // Add small stars
+                    drawMiniStar(ctx, -30 * scale, -50 * scale, 8 * scale, color);
+                    drawMiniStar(ctx, 30 * scale, -50 * scale, 8 * scale, color);
+                    drawMiniStar(ctx, 0, 55 * scale, 8 * scale, color);
+                    break;
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawMiniStar(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                const px = x + Math.cos(angle) * size;
+                const py = y + Math.sin(angle) * size;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function renderAnimatedStamps() {
+            document.querySelectorAll('.stamp-overlay').forEach(el => el.remove());
+
+            for (const stamp of mazeData.stamps) {
+                if (stamp.yStyle) {
+                    // Draw custom Y on canvas (not as overlay for static appearance)
+                    drawCurlyY(ctx, stamp.x, stamp.y, stamp.size, stamp.yStyle, stamp.color);
+                } else if (stamp.emoji) {
+                    // Regular emoji stamp as overlay
+                    const div = document.createElement('div');
+                    div.className = 'stamp-overlay animated-stamp';
+                    div.style.position = 'absolute';
+                    div.style.left = stamp.x + 'px';
+                    div.style.top = stamp.y + 'px';
+                    div.style.fontSize = stamp.size + 'px';
+                    div.style.transform = 'translate(-50%, -50%)';
+                    div.style.pointerEvents = 'none';
+                    div.style.zIndex = '10';
+                    div.style.animationName = stamp.animation;
+                    div.textContent = stamp.emoji;
+                    container.appendChild(div);
+                }
+            }
+        }
+
+        function getMousePos(e, targetCanvas = canvas) {
+            const rect = targetCanvas.getBoundingClientRect();
+            const scaleX = targetCanvas.width / rect.width;
+            const scaleY = targetCanvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDraw(e) {
+            const pos = getMousePos(e);
+            
+            // Check if clicking on start point to show icon picker
+            if (mazeData.start && Math.hypot(pos.x - mazeData.start.x, pos.y - mazeData.start.y) < 30) {
+                if (currentTool !== 'eraser') {
+                    showIconPicker('start', pos.x, pos.y);
+                    return;
+                }
+            }
+            
+            // Check if clicking on end point to show icon picker
+            if (mazeData.end && Math.hypot(pos.x - mazeData.end.x, pos.y - mazeData.end.y) < 30) {
+                if (currentTool !== 'eraser') {
+                    showIconPicker('end', pos.x, pos.y);
+                    return;
+                }
+            }
+            
+            // Hide any open icon pickers
+            hideIconPickers();
+            
+            isDrawing = true;
+            lastX = pos.x;
+            lastY = pos.y;
+
+            if (currentTool === 'start') {
+                mazeData.start = { x: pos.x, y: pos.y, icon: currentStartIcon };
+                redrawMaze();
+                updateStatus('Start point placed! Click on it to change the icon.');
+                isDrawing = false;
+                return;
+            }
+
+            if (currentTool === 'end') {
+                mazeData.end = { x: pos.x, y: pos.y, icon: currentEndIcon };
+                redrawMaze();
+                updateStatus('End point placed! Click on it to change the icon.');
+                isDrawing = false;
+                return;
+            }
+
+            if (currentTool === 'stamp') {
+                const animation = stampAnimations[Math.floor(Math.random() * stampAnimations.length)];
+                
+                if (currentYStyle) {
+                    // Place a custom Y shape
+                    mazeData.stamps.push({
+                        x: pos.x,
+                        y: pos.y,
+                        yStyle: currentYStyle.id,
+                        color: currentYStyle.color,
+                        size: 80 + brushSize * 10,
+                        animation: animation
+                    });
+                    redrawMaze();
+                    updateStatus(`Placed ${currentYStyle.name}!`);
+                } else if (currentStamp) {
+                    // Place a regular emoji stamp
+                    mazeData.stamps.push({
+                        x: pos.x,
+                        y: pos.y,
+                        emoji: currentStamp,
+                        size: brushSize + 20,
+                        animation: animation
+                    });
+                    redrawMaze();
+                    updateStatus(`Placed ${currentStamp}!`);
+                }
+                isDrawing = false;
+                return;
+            }
+
+            if (currentTool === 'eraser') {
+                eraseAt(pos.x, pos.y);
+                return;
+            }
+
+            currentStroke = {
+                points: [{ x: pos.x, y: pos.y }],
+                size: brushSize,
+                color: currentColor
+            };
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const pos = getMousePos(e);
+
+            if (currentTool === 'eraser') {
+                eraseAt(pos.x, pos.y);
+                return;
+            }
+
+            if (currentTool === 'wall' || currentTool === 'path') {
+                currentStroke.points.push({ x: pos.x, y: pos.y });
+
+                ctx.strokeStyle = currentStroke.color;
+                ctx.lineWidth = brushSize;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function stopDraw() {
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            if (currentStroke && currentStroke.points.length > 1) {
+                if (currentTool === 'wall') {
+                    mazeData.walls.push(currentStroke);
+                } else if (currentTool === 'path') {
+                    mazeData.paths.push(currentStroke);
+                }
+                updateValidation();
+            }
+            currentStroke = null;
+        }
+
+        function eraseAt(x, y) {
+            const eraseRadius = brushSize;
+
+            mazeData.walls = mazeData.walls.filter(stroke => {
+                return !stroke.points.some(p => 
+                    Math.hypot(p.x - x, p.y - y) < eraseRadius + stroke.size / 2
+                );
+            });
+
+            mazeData.paths = mazeData.paths.filter(stroke => {
+                return !stroke.points.some(p => 
+                    Math.hypot(p.x - x, p.y - y) < eraseRadius + stroke.size / 2
+                );
+            });
+
+            mazeData.stamps = mazeData.stamps.filter(stamp => {
+                return Math.hypot(stamp.x - x, stamp.y - y) >= eraseRadius + stamp.size / 2;
+            });
+
+            if (mazeData.start && Math.hypot(mazeData.start.x - x, mazeData.start.y - y) < eraseRadius + 25) {
+                mazeData.start = null;
+            }
+
+            if (mazeData.end && Math.hypot(mazeData.end.x - x, mazeData.end.y - y) < eraseRadius + 25) {
+                mazeData.end = null;
+            }
+
+            redrawMaze();
+        }
+
+        function updateStatus(message) {
+            statusBar.textContent = message;
+        }
+
+        // ===== EVENT LISTENERS =====
+        
+        // Tool selection
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+                
+                if (currentTool === 'path') {
+                    currentColor = '#ffd700';
+                    colorPicker.value = currentColor;
+                    document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+                    const yellowPreset = document.querySelector('.color-preset[data-color="#ffd700"]');
+                    if (yellowPreset) yellowPreset.classList.add('active');
+                }
+                
+                updateStatus(`Tool: ${currentTool.charAt(0).toUpperCase() + currentTool.slice(1)} | Click and drag to draw`);
+            });
+        });
+
+        // Stamp dropdown
+        document.getElementById('stampBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            stampDropdown.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.stamp-picker')) {
+                stampDropdown.classList.remove('active');
+            }
+            if (!e.target.closest('.icon-picker-popup') && !e.target.closest('#mazeCanvas')) {
+                hideIconPickers();
+            }
+        });
+
+        // Color picker
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+        });
+
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', () => {
+                currentColor = preset.dataset.color;
+                colorPicker.value = currentColor;
+                document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+                preset.classList.add('active');
+            });
+        });
+
+        // Brush size
+        brushSizeInput.addEventListener('input', () => {
+            brushSize = parseInt(brushSizeInput.value);
+            brushValue.textContent = brushSize;
+        });
+
+        // Clear button
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('Clear the entire maze?')) {
+                mazeData = { 
+                    walls: [], 
+                    paths: [], 
+                    stamps: [], 
+                    start: { x: 60, y: 60, icon: currentStartIcon },
+                    end: { x: 840, y: 540, icon: currentEndIcon },
+                    outerWall: true
+                };
+                redrawMaze();
+                updateStatus('Canvas cleared! Start and End points reset.');
+            }
+        });
+
+        // Canvas events
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            startDraw({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            draw({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        canvas.addEventListener('touchend', stopDraw);
+
+        // ===== PUBLISH FUNCTIONALITY =====
+        publishBtn.addEventListener('click', () => {
+            publishModal.classList.add('active');
+            document.getElementById('mazeName').value = '';
+            document.getElementById('mazeName').focus();
+        });
+
+        document.getElementById('cancelPublishBtn').addEventListener('click', () => {
+            publishModal.classList.remove('active');
+        });
+
+        document.getElementById('confirmPublishBtn').addEventListener('click', () => {
+            const name = document.getElementById('mazeName').value.trim() || 'Untitled Maze';
+            publishMaze(name);
+            publishModal.classList.remove('active');
+        });
+
+        function publishMaze(name) {
+            // Create preview image
+            const previewDataUrl = canvas.toDataURL('image/png');
+
+            const newMaze = {
+                id: Date.now(),
+                name: name,
+                date: new Date().toLocaleDateString(),
+                preview: previewDataUrl,
+                data: JSON.parse(JSON.stringify(mazeData))
+            };
+
+            publishedMazes.push(newMaze);
+            localStorage.setItem('publishedMazes', JSON.stringify(publishedMazes));
+            
+            renderGallery();
+            updateStatus(`🎉 "${name}" published successfully!`);
+
+            // Clear canvas for new maze (keep start/end in default positions)
+            mazeData = { 
+                walls: [], 
+                paths: [], 
+                stamps: [], 
+                start: { x: 60, y: 60, icon: currentStartIcon },
+                end: { x: 840, y: 540, icon: currentEndIcon },
+                outerWall: true
+            };
+            redrawMaze();
+        }
+
+        // ===== GALLERY =====
+        function renderGallery() {
+            mazeGallery.innerHTML = '';
+
+            if (publishedMazes.length === 0) {
+                mazeGallery.innerHTML = '<div class="no-mazes">No mazes published yet. Create and publish your first maze!</div>';
+                return;
+            }
+
+            publishedMazes.forEach(maze => {
+                const card = document.createElement('div');
+                card.className = 'maze-card';
+                card.innerHTML = `
+                    <img class="maze-card-preview" src="${maze.preview}" alt="${maze.name}">
+                    <div class="maze-card-info">
+                        <div class="maze-card-title">${maze.name}</div>
+                        <div class="maze-card-date">Published: ${maze.date}</div>
+                        <div class="maze-card-actions">
+                            <button class="maze-card-btn play-btn" onclick="playMaze(${maze.id})">🎮 Play</button>
+                            <button class="maze-card-btn delete-btn" onclick="deleteMaze(${maze.id})">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+                mazeGallery.appendChild(card);
+            });
+        }
+
+        window.deleteMaze = function(id) {
+            if (confirm('Delete this maze?')) {
+                publishedMazes = publishedMazes.filter(m => m.id !== id);
+                localStorage.setItem('publishedMazes', JSON.stringify(publishedMazes));
+                renderGallery();
+            }
+        };
+
+        // ===== PLAY MODE =====
+        window.playMaze = function(id) {
+            currentPlayMaze = publishedMazes.find(m => m.id === id);
+            if (!currentPlayMaze) return;
+
+            playMazeTitle.textContent = `Playing: ${currentPlayMaze.name}`;
+            
+            // Switch views
+            editorContainer.classList.add('hidden');
+            playModeContainer.classList.add('active');
+
+            // Setup play canvas
+            resetPlayMode();
+        };
+
+        function resetPlayMode() {
+            if (!currentPlayMaze) return;
+
+            playerStarted = false;
+            playerTrail = [];
+            lastValidX = 0;
+            lastValidY = 0;
+            undoStack = [];
+            redoStack = [];
+            updateUndoRedoButtons();
+            playPlayer.style.display = 'none';
+            playOverlay.classList.remove('active');
+            trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+            
+            // Draw the maze
+            drawPlayMaze();
+            
+            playStatusBar.textContent = '🎮 Move your mouse to the START point to begin!';
+        }
+        
+        function updateUndoRedoButtons() {
+            document.getElementById('undoPlayBtn').disabled = undoStack.length === 0;
+            document.getElementById('redoPlayBtn').disabled = redoStack.length === 0;
+        }
+
+        function drawPlayMaze() {
+            const data = currentPlayMaze.data;
+            
+            playCtx.fillStyle = '#ffffff';
+            playCtx.fillRect(0, 0, playCanvas.width, playCanvas.height);
+            
+            // Draw outer boundary wall
+            playCtx.strokeStyle = '#1a1a1a';
+            playCtx.lineWidth = 8;
+            playCtx.lineCap = 'round';
+            playCtx.lineJoin = 'round';
+            playCtx.strokeRect(10, 10, playCanvas.width - 20, playCanvas.height - 20);
+            
+            playCtx.lineCap = 'round';
+            playCtx.lineJoin = 'round';
+
+            // NOTE: Don't draw paths - player must find their own way!
+            // The path is only the creator's solution, not shown during play
+
+            // Draw walls - these are the obstacles the player must avoid
+            for (const stroke of data.walls) {
+                if (stroke.points.length < 2) continue;
+                playCtx.strokeStyle = stroke.color || '#1a1a1a';
+                playCtx.lineWidth = stroke.size;
+                playCtx.beginPath();
+                playCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    playCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+                playCtx.stroke();
+            }
+
+            // Draw stamps
+            for (const stamp of data.stamps) {
+                if (stamp.yStyle) {
+                    // Draw custom Y shape
+                    drawCurlyY(playCtx, stamp.x, stamp.y, stamp.size, stamp.yStyle, stamp.color);
+                } else if (stamp.emoji) {
+                    playCtx.font = `${stamp.size}px Arial`;
+                    playCtx.textAlign = 'center';
+                    playCtx.textBaseline = 'middle';
+                    playCtx.fillText(stamp.emoji, stamp.x, stamp.y);
+                }
+            }
+
+            // Draw start with icon
+            if (data.start) {
+                const startIcon = data.start.icon || '🟢';
+                // Only show circle for default icons
+                if (startIcon === '🟢') {
+                    playCtx.fillStyle = '#4CAF50';
+                    playCtx.strokeStyle = '#2E7D32';
+                    playCtx.lineWidth = 3;
+                    playCtx.beginPath();
+                    playCtx.arc(data.start.x, data.start.y, 28, 0, Math.PI * 2);
+                    playCtx.fill();
+                    playCtx.stroke();
+                }
+                
+                playCtx.font = '36px Arial';
+                playCtx.textAlign = 'center';
+                playCtx.textBaseline = 'middle';
+                playCtx.fillText(startIcon, data.start.x, data.start.y);
+            }
+
+            // Draw end with icon
+            if (data.end) {
+                const endIcon = data.end.icon || '🔵';
+                // Only show circle for default icons
+                if (endIcon === '🔵') {
+                    playCtx.fillStyle = '#2196F3';
+                    playCtx.strokeStyle = '#1565C0';
+                    playCtx.lineWidth = 3;
+                    playCtx.beginPath();
+                    playCtx.arc(data.end.x, data.end.y, 28, 0, Math.PI * 2);
+                    playCtx.fill();
+                    playCtx.stroke();
+                }
+                
+                playCtx.font = '36px Arial';
+                playCtx.textAlign = 'center';
+                playCtx.textBaseline = 'middle';
+                playCtx.fillText(endIcon, data.end.x, data.end.y);
+            }
+        }
+
+        // Check if player hits a wall (returns true if hitting a wall = lose)
+        function hitsWall(x, y) {
+            const data = currentPlayMaze.data;
+            const tolerance = 2; // Small tolerance for wall collision
+
+            // Check walls - if player touches a wall, they lose
+            for (const stroke of data.walls) {
+                for (let i = 0; i < stroke.points.length - 1; i++) {
+                    const p1 = stroke.points[i];
+                    const p2 = stroke.points[i + 1];
+                    
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const lengthSq = dx * dx + dy * dy;
+                    
+                    if (lengthSq === 0) {
+                        if (Math.hypot(x - p1.x, y - p1.y) < stroke.size / 2 + tolerance) return true;
+                        continue;
+                    }
+                    
+                    let t = ((x - p1.x) * dx + (y - p1.y) * dy) / lengthSq;
+                    t = Math.max(0, Math.min(1, t));
+                    
+                    const nearestX = p1.x + t * dx;
+                    const nearestY = p1.y + t * dy;
+                    const dist = Math.hypot(x - nearestX, y - nearestY);
+                    
+                    if (dist < stroke.size / 2 + tolerance) return true;
+                }
+            }
+            
+            // Check outer wall boundary
+            if (x < 14 || x > playCanvas.width - 14 || y < 14 || y > playCanvas.height - 14) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        function drawTrail(x, y) {
+            if (playerTrail.length === 0) {
+                lastTrailX = x;
+                lastTrailY = y;
+            }
+            
+            playerTrail.push({ x, y });
+            
+            // Save to undo stack every TRAIL_SEGMENT_SIZE points
+            if (playerTrail.length % TRAIL_SEGMENT_SIZE === 0) {
+                undoStack.push([...playerTrail]);
+                redoStack = []; // Clear redo when new moves are made
+                updateUndoRedoButtons();
+            }
+
+            trailCtx.strokeStyle = 'rgba(0, 255, 100, 0.6)';
+            trailCtx.lineWidth = 8;
+            trailCtx.lineCap = 'round';
+            trailCtx.lineJoin = 'round';
+            trailCtx.beginPath();
+            trailCtx.moveTo(lastTrailX, lastTrailY);
+            trailCtx.lineTo(x, y);
+            trailCtx.stroke();
+
+            trailCtx.strokeStyle = 'rgba(0, 255, 100, 0.3)';
+            trailCtx.lineWidth = 16;
+            trailCtx.beginPath();
+            trailCtx.moveTo(lastTrailX, lastTrailY);
+            trailCtx.lineTo(x, y);
+            trailCtx.stroke();
+
+            if (playerTrail.length % 10 === 0) {
+                trailCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                trailCtx.beginPath();
+                trailCtx.arc(x, y, 4, 0, Math.PI * 2);
+                trailCtx.fill();
+            }
+
+            lastTrailX = x;
+            lastTrailY = y;
+        }
+        
+        function redrawTrailFromPoints() {
+            trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+            
+            if (playerTrail.length < 2) return;
+            
+            // Draw the trail
+            for (let i = 1; i < playerTrail.length; i++) {
+                const prev = playerTrail[i - 1];
+                const curr = playerTrail[i];
+                
+                // Outer glow
+                trailCtx.strokeStyle = 'rgba(0, 255, 100, 0.3)';
+                trailCtx.lineWidth = 16;
+                trailCtx.lineCap = 'round';
+                trailCtx.lineJoin = 'round';
+                trailCtx.beginPath();
+                trailCtx.moveTo(prev.x, prev.y);
+                trailCtx.lineTo(curr.x, curr.y);
+                trailCtx.stroke();
+                
+                // Inner line
+                trailCtx.strokeStyle = 'rgba(0, 255, 100, 0.6)';
+                trailCtx.lineWidth = 8;
+                trailCtx.beginPath();
+                trailCtx.moveTo(prev.x, prev.y);
+                trailCtx.lineTo(curr.x, curr.y);
+                trailCtx.stroke();
+            }
+            
+            // Draw dots every 10 points
+            for (let i = 10; i < playerTrail.length; i += 10) {
+                trailCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                trailCtx.beginPath();
+                trailCtx.arc(playerTrail[i].x, playerTrail[i].y, 4, 0, Math.PI * 2);
+                trailCtx.fill();
+            }
+        }
+        
+        function undoTrail() {
+            if (undoStack.length === 0) return;
+            
+            // Save current state to redo
+            redoStack.push([...playerTrail]);
+            
+            // Restore previous state
+            const previousState = undoStack.pop();
+            playerTrail = previousState ? [...previousState] : [];
+            
+            // Update player position
+            if (playerTrail.length > 0) {
+                const lastPoint = playerTrail[playerTrail.length - 1];
+                lastValidX = lastPoint.x;
+                lastValidY = lastPoint.y;
+                lastTrailX = lastPoint.x;
+                lastTrailY = lastPoint.y;
+                
+                // Update player dot position
+                const canvasRect = playCanvas.getBoundingClientRect();
+                const scaleX = canvasRect.width / playCanvas.width;
+                const scaleY = canvasRect.height / playCanvas.height;
+                playPlayer.style.left = (lastPoint.x * scaleX) + 'px';
+                playPlayer.style.top = (lastPoint.y * scaleY) + 'px';
+            }
+            
+            redrawTrailFromPoints();
+            updateUndoRedoButtons();
+            playStatusBar.textContent = '↩️ Undone! Continue from here.';
+        }
+        
+        function redoTrail() {
+            if (redoStack.length === 0) return;
+            
+            // Save current state to undo
+            undoStack.push([...playerTrail]);
+            
+            // Restore redo state
+            const nextState = redoStack.pop();
+            playerTrail = nextState ? [...nextState] : [];
+            
+            // Update player position
+            if (playerTrail.length > 0) {
+                const lastPoint = playerTrail[playerTrail.length - 1];
+                lastValidX = lastPoint.x;
+                lastValidY = lastPoint.y;
+                lastTrailX = lastPoint.x;
+                lastTrailY = lastPoint.y;
+                
+                // Update player dot position
+                const canvasRect = playCanvas.getBoundingClientRect();
+                const scaleX = canvasRect.width / playCanvas.width;
+                const scaleY = canvasRect.height / playCanvas.height;
+                playPlayer.style.left = (lastPoint.x * scaleX) + 'px';
+                playPlayer.style.top = (lastPoint.y * scaleY) + 'px';
+            }
+            
+            redrawTrailFromPoints();
+            updateUndoRedoButtons();
+            playStatusBar.textContent = '↪️ Redone! Continue from here.';
+        }
+
+        // Play canvas mouse handling
+        playCanvas.addEventListener('mousemove', (e) => {
+            if (!currentPlayMaze) return;
+
+            const pos = getMousePos(e, playCanvas);
+            const canvasRect = playCanvas.getBoundingClientRect();
+            const scaleX = canvasRect.width / playCanvas.width;
+            const scaleY = canvasRect.height / playCanvas.height;
+            const data = currentPlayMaze.data;
+
+            if (!playerStarted) {
+                // Show player dot following mouse before starting
+                playPlayer.style.left = (e.clientX - canvasRect.left) + 'px';
+                playPlayer.style.top = (e.clientY - canvasRect.top) + 'px';
+                
+                if (data.start && Math.hypot(pos.x - data.start.x, pos.y - data.start.y) < 30) {
+                    playerStarted = true;
+                    playPlayer.style.display = 'block';
+                    lastTrailX = pos.x;
+                    lastTrailY = pos.y;
+                    lastValidX = pos.x;
+                    lastValidY = pos.y;
+                    playStatusBar.textContent = '🎮 Navigate to the END point! Avoid the walls!';
+                }
+                return;
+            }
+
+            // Check if new position hits a wall - if so, keep player at last valid position
+            if (hitsWall(pos.x, pos.y)) {
+                // Keep player dot at last valid position (don't follow mouse into wall)
+                playPlayer.style.left = (lastValidX * scaleX) + 'px';
+                playPlayer.style.top = (lastValidY * scaleY) + 'px';
+                playStatusBar.textContent = '🚫 Blocked by wall! Find another way.';
+                return;
+            }
+
+            // Position is valid - update player and trail
+            lastValidX = pos.x;
+            lastValidY = pos.y;
+            playPlayer.style.left = (lastValidX * scaleX) + 'px';
+            playPlayer.style.top = (lastValidY * scaleY) + 'px';
+            playStatusBar.textContent = '🎮 Navigate to the END point! Avoid the walls!';
+
+            drawTrail(pos.x, pos.y);
+
+            // Check win
+            if (data.end && Math.hypot(pos.x - data.end.x, pos.y - data.end.y) < 30) {
+                messageTitle.textContent = '🎉 You Win! 🎉';
+                messageText.textContent = 'Congratulations! You navigated the maze!';
+                playMessage.className = 'play-message win';
+                playOverlay.classList.add('active');
+                return;
+            }
+        });
+
+        trailCanvas.addEventListener('mousemove', (e) => {
+            playCanvas.dispatchEvent(new MouseEvent('mousemove', {
+                clientX: e.clientX,
+                clientY: e.clientY
+            }));
+        });
+
+        playCanvas.addEventListener('mouseleave', () => {
+            if (playerStarted && !playOverlay.classList.contains('active')) {
+                playStatusBar.textContent = '⚠️ Move your mouse back into the maze to continue!';
+            }
+        });
+
+        // Play mode buttons
+        document.getElementById('backToEditorBtn').addEventListener('click', () => {
+            editorContainer.classList.remove('hidden');
+            playModeContainer.classList.remove('active');
+            currentPlayMaze = null;
+        });
+
+        document.getElementById('resetPlayBtn').addEventListener('click', resetPlayMode);
+        document.getElementById('playAgainBtn').addEventListener('click', resetPlayMode);
+        
+        // Undo/Redo buttons
+        document.getElementById('undoPlayBtn').addEventListener('click', undoTrail);
+        document.getElementById('redoPlayBtn').addEventListener('click', redoTrail);
+
+        // ===== START =====
+        init();
+    </script>
+</body>
+</html>
